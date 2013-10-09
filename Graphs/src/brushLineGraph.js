@@ -16,6 +16,8 @@ var margin = {top: 10, right: rightMargin, bottom: 100, left: leftMargin},
 
 var parseDate = d3.time.format("%d/%m/%Y %H:%M:%S").parse;
 
+var color = d3.scale.category10();
+
 var x = d3.time.scale().range([0, width]),
     x2 = d3.time.scale().range([0, width]),
     y = d3.scale.linear().range([height, 0]),
@@ -33,12 +35,12 @@ var brush = d3.svg.brush()
 var line = d3.svg.line()
     .interpolate("linear")
     .x(function(d) { return x(d.timeStamp); })
-    .y(function(d) { return y(d.value); });
+    .y(function(d) { return y(d.seriesValue); });
 
 var xContext = d3.svg.line()
     .interpolate("linear")
     .x(function(d) { return x2(d.timeStamp); })
-    .y(function(d) { return y2(d.value); });
+    .y(function(d) { return y2(d.seriesValue); });
 
 var svg = d3.select("body").append("svg")
     .attr("width", width + margin.left + margin.right)
@@ -58,40 +60,71 @@ var context = svg.append("g")
 
 
 d3.csv("data/ThreeSeriesRandom.csv", function(error, rows) {
+    color.domain(d3.keys(rows[0]).filter(function(key) { return key !== "TimeStamp"; }));
+
     rows.forEach(function(d) {
         d.timeStamp = parseDate(d.TimeStamp);
-        d.value = +d.Series1;
     });
 
-    x.domain(d3.extent(rows.map(function(d) { return d.timeStamp; })));
-    y.domain([0, d3.max(rows.map(function(d) { return d.value; }))]);
+    //Create series with name and values array
+    var seriesData = color.domain().map(function(name) {
+        return {
+            name: name,
+            values: rows.map(function(d) {
+                return {timeStamp: d.timeStamp, seriesValue: +d[name]};
+            })
+        };
+    });
+
+    x.domain(d3.extent(rows, function(d) { return d.timeStamp; }));
+
+    y.domain([
+        d3.min(seriesData, function(c) { return d3.min(c.values, function(v) { return v.seriesValue; }); }),
+        d3.max(seriesData, function(c) { return d3.max(c.values, function(v) { return v.seriesValue; }); })
+    ]);
+
     x2.domain(x.domain());
     y2.domain(y.domain());
 
-    focus.append("path")
-        .datum(rows)
-        .attr("clip-path", "url(#clip)")
-        .attr("d", line);
 
-    focus.append("g")
+    var focusMain = focus.selectAll(".series")
+        .data(seriesData)
+        .enter().append("g")
+        .attr("class", "series");
+
+
+
+    focusMain.append("path")
+        .attr("clip-path", "url(#clip)")
+        .attr("d", function(d) { return line(d.values); })
+        .style("stroke", function(d) { return color(d.name); });
+
+
+    focusMain.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
         .call(xAxis);
 
-    focus.append("g")
+    focusMain.append("g")
         .attr("class", "y axis")
         .call(yAxis);
 
-    context.append("path")
-        .datum(rows)
-        .attr("d", xContext);
+    var contextMain = context.selectAll(".contextSeries")
+        .data(seriesData)
+        .enter().append("g")
+        .attr("class", "contextSeries");
 
-    context.append("g")
+    contextMain.append("path")
+        .attr("d", function(d) { return xContext(d.values); })
+        .style("stroke", function(d) { return color(d.name); });
+
+
+    contextMain.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + heightZoomArea + ")")
         .call(xAxis2);
 
-    context.append("g")
+    contextMain.append("g")
         .attr("class", "x brush")
         .call(brush)
         .selectAll("rect")
@@ -105,7 +138,11 @@ function brushed() {
         var extent = brush.extent();
         x.domain( [extent[0][0],extent[1][0]]);
         y.domain( [extent[0][1],extent[1][1]]);
-        focus.select("path").attr("d", line);
+
+        focus.selectAll("path")
+        .attr("d", function(d) { return line(d.values); })
+        .style("stroke", function(d) { return color(d.name); });
+
         focus.select(".x.axis").call(xAxis);
     }
 }
