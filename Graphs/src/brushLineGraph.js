@@ -139,7 +139,12 @@ function brushed() {
         x.domain( [extent[0][0],extent[1][0]]);
         y.domain( [extent[0][1],extent[1][1]]);
 
-        focus.selectAll("path")
+
+
+        var focusMain = focus.selectAll(".series");
+
+
+        focusMain.selectAll("path")
         .attr("d", function(d) { return line(d.values); })
         .style("stroke", function(d) { return color(d.name); });
 
