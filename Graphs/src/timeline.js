@@ -3,6 +3,23 @@
  */
 
 
+function addMinutes(date, minutes) {
+    return new Date(date.getTime() + minutes*60000);
+}
+
+
+var parseDate = d3.time.format("%d/%m/%Y %H:%M:%S.%L").parse;
+
+function getColour(number) {
+    if(number === "1")
+    {
+        return "red";
+    }else
+    {
+        return "green";
+    }
+}
+
 var margin = {top: 20, right: 80, bottom: 30, left: 50},
     width = 960 - margin.left - margin.right,
     height = 500 - margin.top - margin.bottom;
@@ -29,16 +46,22 @@ var svg = d3.select("body").append("svg")
     .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+
 data.forEach(function(d) {
-    d.timeStampStart = new Date(d.timeStampStart);
-    d.timeStampStop = new Date(d.timeStampStop);
+    d.timeStampStart = parseDate(d.timeStamp);
+    d.value = getColour(d.isFailed);
 });
 
-x.domain(d3.extent(data, function(d) { return d.timeStampStop; }));
+x.domain([
+    addMinutes(d3.min(data, function(d) { return d.timeStampStart; }),-10),
+    addMinutes(d3.max(data, function(d) { return d.timeStampStart; }),10)
+    ]
+);
 y.domain([
     0,
-    4
+    1
 ]);
+
 
 svg.append("g")
     .attr("class", "x axis")
@@ -54,18 +77,38 @@ var line = d3.svg.line()
     .x(function(d) { return x(d.x); })
     .y(function(d) { return y(d.y); });
 
-var events = svg.selectAll(".rect1")
-    .data(data)
-    .enter().append("svg:rect")
+
+
+var results = svg.selectAll(".rect")
+    .data(data);
+
+
+    results.enter().append("svg:rect")
+     .attr("class", function(d) {return x(d.timeStampStart)})
     .attr("x", function(d) {return x(d.timeStampStart)})
-    .attr("y", y(4))
-    .attr("width",function(d) { return x(d.timeStampStop)-x(d.timeStampStart)})
+    .attr("y", y(1))
+    .attr("width",function(d) { return d3.max([2,x(addMinutes(d.timeStampStart,1))-x(d.timeStampStart)]) })
     .attr("height", y(0)-y(1))
     .style("stroke", "none")
-    .style("fill", function(d) { return d.value1;});
+    .style("fill", function(d) { return d.value;})
+    .append("title")
+    .text(function(d) {
+        return "calls:"+d.calls+ " errrors:"+ d.errors;
+    });
 
 
 
+    results.sort(function(a, b){
+        return d3.ascending(a.value, b.value);
+    });
+
+
+
+
+
+
+
+/*
 var events = svg.selectAll(".rect2")
     .data(data)
     .enter().append("svg:rect")
@@ -76,5 +119,5 @@ var events = svg.selectAll(".rect2")
     .style("stroke", "none")
     .style("fill", function(d) { return d.value2;});
 
-
+*/
 

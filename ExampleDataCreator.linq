@@ -6,8 +6,9 @@
 void Main()
 {
 	var random = new Random();
-	var data = GetTimeSeries(DateTime.Now.AddHours(-5).ToUniversalTime(),TimeSpan.FromHours(5),1)
-	.Select(x => new {timeStamp=x,value=GetEvent(random)});
+	double intervalInMinutes = 1;
+	var data = GetTimeSeries(DateTime.Now.AddHours(-24).ToUniversalTime(),TimeSpan.FromHours(24),intervalInMinutes)
+	.Select(x => new {timeStampStart=x.AddMinutes(-intervalInMinutes/2.0),timeStampStop=x.AddMinutes(intervalInMinutes/2.0),value1=GetEvent(random),value2=GetEvent(random)});
 	
 	JsonConvert.SerializeObject(data,new JsonSerializerSettings() {
         DateFormatHandling = DateFormatHandling.IsoDateFormat
@@ -19,7 +20,7 @@ void Main()
 
 
 
-public static  List<DateTime> GetTimeSeries(DateTime start, TimeSpan length, int intervalInMinutes)
+public static  List<DateTime> GetTimeSeries(DateTime start, TimeSpan length, double intervalInMinutes)
 {
 	var timeStamp = start;
 	var end = start.Add(length);
@@ -36,7 +37,7 @@ public static  List<DateTime> GetTimeSeries(DateTime start, TimeSpan length, int
 
 public static  String GetEvent(Random random)
 {
-	if(random.Next(0,10) < 9)
+	if(random.Next(0,10) > 8)
 	{
 		return "Red";
 	}
